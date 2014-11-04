@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/kolo/xmlrpc"
 )
 
 const sixtyFourKiloBytes = 64 * 1024
@@ -73,4 +75,53 @@ func hashFile(filepath string) (string, int64, error) {
 	}
 
 	return fmt.Sprintf("%x", uint64(fileSize)+head+tail), fileSize, nil
+}
+
+func GetSubtitle(file string) error {
+	client, err := xmlrpc.NewClient("http://api.opensubtitles.org/xml-rpc", nil)
+	if err != nil {
+		return err
+	}
+
+	loginRequest := []interface{}{"", "", "en", "OSTestUserAgent"}
+	var loginResponse struct {
+		Token   string  `xmlrpc:"token"`
+		Status  string  `xmlrpc:"status"`
+		Seconds float32 `xmlrpc:"seconds"`
+	}
+
+	err = client.Call("LogIn", loginRequest, &loginResponse)
+	if err != nil {
+		return err
+	}
+
+	if loginResponse.Status != "200 OK" {
+		return fmt.Errorf("Bad rc from login call to opensubtitles: %s", loginResponse.Status)
+	}
+
+	hash, size, err := hashFile(file)
+	if err != nil {
+		return err
+	}
+
+	searchRequest := []interface{}{
+		loginResponse.Token,
+		[]struct {
+			MovieByteSize string `xmlrpc:"moviebytesize"`
+			MovieHash     string `xmlrpc:"moviehash"`
+		}{{fmt.Sprintf("%d", size), hash}}}
+	var searchResponse interface{}
+
+	err = client.Call("SearchSubtitles", searchRequest, &searchResponse)
+	if err != nil {
+		return err
+	}
+
+	err = client.Call("LogOut", loginResponse.Token, nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Got response:\n%v\n", searchResponse)
+	return nil
 }

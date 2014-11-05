@@ -1,12 +1,9 @@
 package plugins
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"os"
 
 	"github.com/kolo/xmlrpc"
 )
@@ -30,65 +27,6 @@ func init() {
 
 type openSubtitlesSearcher struct{}
 
-func (s openSubtitlesSearcher) hashChunk(reader io.Reader) (uint64, error) {
-	// Read all int64s
-	int64Buffer := make([]uint64, sixtyFourKiloBytes/int64InBytes)
-	err := binary.Read(reader, binary.LittleEndian, &int64Buffer)
-	if err != nil {
-		return 0, err
-	}
-
-	// Sum em up
-	var sum uint64
-	for _, n := range int64Buffer {
-		sum += n
-	}
-
-	return sum, nil
-}
-
-// HashFile hashed a given file by summing up it's size in bytes, and the checksum
-// of the first and last 64K, even if they overlap.
-// Reference: http://trac.opensubtitles.org/projects/opensubtitles/wiki/HashSourceCodes
-func (s openSubtitlesSearcher) hashFile(filepath string) (string, int64, error) {
-	file, err := os.Open(filepath)
-	if err != nil {
-		return "", 0, err
-	}
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return "", 0, err
-	}
-
-	// File size is an int64 - important!
-	fileSize := fileInfo.Size()
-	if fileSize < sixtyFourKiloBytes {
-		return "", 0, ErrFileSizeTooSmall
-	}
-
-	// Read the first 64K
-	fileStartReader := io.LimitReader(file, sixtyFourKiloBytes)
-	head, err := s.hashChunk(fileStartReader)
-	if err != nil {
-		return "", 0, err
-	}
-
-	// Seek to and read the last 64K
-	_, err = file.Seek(-sixtyFourKiloBytes, os.SEEK_END)
-	if err != nil {
-		return "", 0, err
-	}
-
-	tail, err := s.hashChunk(file)
-	if err != nil {
-		return "", 0, err
-	}
-
-	return fmt.Sprintf("%x", uint64(fileSize)+head+tail), fileSize, nil
-}
-
 func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef, error) {
 	client, err := xmlrpc.NewClient("http://api.opensubtitles.org/xml-rpc", nil)
 	if err != nil {
@@ -111,7 +49,7 @@ func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef
 		return nil, fmt.Errorf("Bad rc from login call to opensubtitles: %s", loginResponse.Status)
 	}
 
-	hash, size, err := s.hashFile(file)
+	hash, size, err := movieHashFile(file)
 	if err != nil {
 		return nil, err
 	}

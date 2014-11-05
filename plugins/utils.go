@@ -2,9 +2,18 @@ package plugins
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+)
+
+const sixtyFourKiloBytes = 64 * 1024
+const int64InBytes = 64 / 8
+
+var (
+	// ErrFileSizeTooSmall is the error that is thrown when the file is too short
+	ErrFileSizeTooSmall = errors.New("The file is too short to be hashed (< 64K).")
 )
 
 func hashChunk(reader io.Reader) (uint64, error) {

@@ -1,19 +1,10 @@
 package plugins
 
 import (
-	"errors"
 	"fmt"
 	"log"
 
 	"github.com/kolo/xmlrpc"
-)
-
-const sixtyFourKiloBytes = 64 * 1024
-const int64InBytes = 64 / 8
-
-var (
-	// ErrFileSizeTooSmall is the error that is thrown when the file is too short
-	ErrFileSizeTooSmall = errors.New("The file is too short to be hashed (< 64K).")
 )
 
 var (

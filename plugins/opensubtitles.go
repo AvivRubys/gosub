@@ -18,42 +18,36 @@ func init() {
 
 type openSubtitlesSearcher struct{}
 
-func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef, error) {
-	client, err := xmlrpc.NewClient("http://api.opensubtitles.org/xml-rpc", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	loginRequest := []interface{}{"", "", "en", "OSTestUserAgent"}
-	var loginResponse struct {
+func (s openSubtitlesSearcher) login(client *xmlrpc.Client, username, password, language, useragent string) (string, error) {
+	request := []interface{}{username, password, language, useragent}
+	var response struct {
 		Token   string  `xmlrpc:"token"`
 		Status  string  `xmlrpc:"status"`
 		Seconds float32 `xmlrpc:"seconds"`
 	}
 
-	err = client.Call("LogIn", loginRequest, &loginResponse)
+	err := client.Call("LogIn", request, &response)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	if loginResponse.Status != "200 OK" {
-		return nil, fmt.Errorf("Bad rc from login call to opensubtitles: %s", loginResponse.Status)
+	if response.Status != "200 OK" {
+		return "", fmt.Errorf("Bad rc from login call to opensubtitles: %s", response.Status)
 	}
 
-	hash, size, err := movieHashFile(file)
-	if err != nil {
-		return nil, err
-	}
+	return response.Token, nil
+}
 
-	searchRequest := []interface{}{
-		loginResponse.Token,
+func (s openSubtitlesSearcher) searchSubtitles(client *xmlrpc.Client, token, hash, language string, size int64) ([]SubtitleRef, error) {
+	request := []interface{}{
+		token,
 		[]struct {
 			MovieByteSize string `xmlrpc:"moviebytesize"`
 			MovieHash     string `xmlrpc:"moviehash"`
 			Language      string `xmlrpc:"sublanguageid"`
 		}{{fmt.Sprintf("%d", size), hash, language}}}
-	// SubFileName, SubHash, MovieNameEng, SubDownloadLink, SubtitlesLink
-	var searchResponse struct {
+
+	var response struct {
 		Status    string `xmlrpc:"status"`
 		Subtitles []struct {
 			FileName  string `xmlrpc:"SubFileName"`
@@ -65,13 +59,13 @@ func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef
 		} `xmlrpc:"data"`
 	}
 
-	err = client.Call("SearchSubtitles", searchRequest, &searchResponse)
+	err := client.Call("SearchSubtitles", request, &response)
 	if err != nil {
 		return nil, err
 	}
 
 	var subs []SubtitleRef
-	for _, sub := range searchResponse.Subtitles {
+	for _, sub := range response.Subtitles {
 		subs = append(subs, SubtitleRef{
 			FileName: sub.FileName,
 			URL:      sub.URL,
@@ -79,7 +73,28 @@ func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef
 		})
 	}
 
-	err = client.Call("LogOut", loginResponse.Token, nil)
+	return subs, nil
+}
+
+func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef, error) {
+	client, err := xmlrpc.NewClient("http://api.opensubtitles.org/xml-rpc", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := s.login(client, "", "", language, userAgent)
+	if err != nil {
+		return nil, err
+	}
+
+	hash, size, err := movieHashFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	subs, err := s.searchSubtitles(client, token, hash, language, size)
+
+	err = client.Call("LogOut", token, nil)
 	if err != nil {
 		log.Printf("LogOut from opensubtitles failed. Reason: %s\n", err)
 	}

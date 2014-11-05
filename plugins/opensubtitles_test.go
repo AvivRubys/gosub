@@ -1,4 +1,4 @@
-package gosub
+package plugins
 
 import (
 	"fmt"

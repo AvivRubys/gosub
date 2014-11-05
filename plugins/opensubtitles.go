@@ -1,10 +1,11 @@
-package gosub
+package plugins
 
 import (
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/kolo/xmlrpc"
@@ -18,7 +19,18 @@ var (
 	ErrFileSizeTooSmall = errors.New("The file is too short to be hashed (< 64K).")
 )
 
-func hashChunk(reader io.Reader) (uint64, error) {
+var (
+	openSubtitlesSource = SubtitleSource{Name: "OpenSubtitles.org", Impl: openSubtitlesSearcher{}}
+)
+
+func init() {
+	db := GetSubtitleDB()
+	db.addSource(openSubtitlesSource)
+}
+
+type openSubtitlesSearcher struct{}
+
+func (s openSubtitlesSearcher) hashChunk(reader io.Reader) (uint64, error) {
 	// Read all int64s
 	int64Buffer := make([]uint64, sixtyFourKiloBytes/int64InBytes)
 	err := binary.Read(reader, binary.LittleEndian, &int64Buffer)
@@ -38,7 +50,7 @@ func hashChunk(reader io.Reader) (uint64, error) {
 // HashFile hashed a given file by summing up it's size in bytes, and the checksum
 // of the first and last 64K, even if they overlap.
 // Reference: http://trac.opensubtitles.org/projects/opensubtitles/wiki/HashSourceCodes
-func hashFile(filepath string) (string, int64, error) {
+func (s openSubtitlesSearcher) hashFile(filepath string) (string, int64, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return "", 0, err
@@ -58,7 +70,7 @@ func hashFile(filepath string) (string, int64, error) {
 
 	// Read the first 64K
 	fileStartReader := io.LimitReader(file, sixtyFourKiloBytes)
-	head, err := hashChunk(fileStartReader)
+	head, err := s.hashChunk(fileStartReader)
 	if err != nil {
 		return "", 0, err
 	}
@@ -69,7 +81,7 @@ func hashFile(filepath string) (string, int64, error) {
 		return "", 0, err
 	}
 
-	tail, err := hashChunk(file)
+	tail, err := s.hashChunk(file)
 	if err != nil {
 		return "", 0, err
 	}
@@ -77,10 +89,10 @@ func hashFile(filepath string) (string, int64, error) {
 	return fmt.Sprintf("%x", uint64(fileSize)+head+tail), fileSize, nil
 }
 
-func GetSubtitle(file string) error {
+func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef, error) {
 	client, err := xmlrpc.NewClient("http://api.opensubtitles.org/xml-rpc", nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	loginRequest := []interface{}{"", "", "en", "OSTestUserAgent"}
@@ -92,16 +104,16 @@ func GetSubtitle(file string) error {
 
 	err = client.Call("LogIn", loginRequest, &loginResponse)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if loginResponse.Status != "200 OK" {
-		return fmt.Errorf("Bad rc from login call to opensubtitles: %s", loginResponse.Status)
+		return nil, fmt.Errorf("Bad rc from login call to opensubtitles: %s", loginResponse.Status)
 	}
 
-	hash, size, err := hashFile(file)
+	hash, size, err := s.hashFile(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	searchRequest := []interface{}{
@@ -109,19 +121,39 @@ func GetSubtitle(file string) error {
 		[]struct {
 			MovieByteSize string `xmlrpc:"moviebytesize"`
 			MovieHash     string `xmlrpc:"moviehash"`
-		}{{fmt.Sprintf("%d", size), hash}}}
-	var searchResponse interface{}
+			Language      string `xmlrpc:"sublanguageid"`
+		}{{fmt.Sprintf("%d", size), hash, language}}}
+	// SubFileName, SubHash, MovieNameEng, SubDownloadLink, SubtitlesLink
+	var searchResponse struct {
+		Status    string `xmlrpc:"status"`
+		Subtitles []struct {
+			FileName  string `xmlrpc:"SubFileName"`
+			Hash      string `xmlrpc:"SubHash"`
+			Format    string `xmlrpc:"SubFormat"`
+			MovieName string `xmlrpc:"MovieName"`
+			URL       string `xmlrpc:"SubDownloadLink"`
+			Page      string `xmlrpc:"SubtitlesLink"`
+		} `xmlrpc:"data"`
+	}
 
 	err = client.Call("SearchSubtitles", searchRequest, &searchResponse)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	var subs []SubtitleRef
+	for _, sub := range searchResponse.Subtitles {
+		subs = append(subs, SubtitleRef{
+			FileName: sub.FileName,
+			URL:      sub.URL,
+			Source:   &openSubtitlesSource,
+		})
 	}
 
 	err = client.Call("LogOut", loginResponse.Token, nil)
 	if err != nil {
-		return err
+		log.Printf("LogOut from opensubtitles failed. Reason: %s\n", err)
 	}
 
-	fmt.Printf("Got response:\n%v\n", searchResponse)
-	return nil
+	return subs, nil
 }

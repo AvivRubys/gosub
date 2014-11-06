@@ -2,6 +2,11 @@ package plugins
 
 import "log"
 
+// Consts
+const (
+	userAgent = "periscope" // gosub v0.1
+)
+
 // Basic structs and interfaces of the plugins module
 
 // SubtitleRef is a reference to a subtitle, i.e. it wasn't downloaded yet, just found.
@@ -54,6 +59,7 @@ func (db *pluginsDB) SearchAll(fileName, language string) ([]SubtitleRef, error)
 
 var searchers = pluginsDB{make([]SubtitleSource, 0)}
 
+// GetSubtitleDB returns a SubtitleDB through which we can search for subtitles
 func GetSubtitleDB() SubtitleDB {
 	return &searchers
 }

@@ -4,21 +4,27 @@ import "log"
 
 // Consts
 const (
-	userAgent = "periscope" // gosub v0.1
+	userAgent = "OSTestUserAgent" // gosub v0.1
 )
 
 // Basic structs and interfaces of the plugins module
 
 // SubtitleRef is a reference to a subtitle, i.e. it wasn't downloaded yet, just found.
 type SubtitleRef struct {
-	FileName string
-	URL      string
-	Source   *SubtitleSource
+	FileName  string
+	Hash      string
+	Format    string
+	Downloads int
+	URL       string
+	Source    *SubtitleSource
 }
 
 // SubtitleSearcher is the interface a search plugin needs to implement
 type SubtitleSearcher interface {
 	GetSubtitle(filePath, language string) ([]SubtitleRef, error)
+
+	// Download returns the path of the downloaded subtitle
+	Download(subtitle SubtitleRef, filePath string) (string, error)
 }
 
 // SubtitleSource represents a search plugin

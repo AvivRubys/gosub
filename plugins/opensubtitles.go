@@ -1,8 +1,14 @@
 package plugins
 
 import (
+	"compress/gzip"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
+	"path"
+	"strconv"
 
 	"github.com/kolo/xmlrpc"
 )
@@ -54,6 +60,7 @@ func (s openSubtitlesSearcher) searchSubtitles(client *xmlrpc.Client, token, has
 			Hash      string `xmlrpc:"SubHash"`
 			Format    string `xmlrpc:"SubFormat"`
 			MovieName string `xmlrpc:"MovieName"`
+			Downloads string `xmlrpc:"SubDownloadsCnt"`
 			URL       string `xmlrpc:"SubDownloadLink"`
 			Page      string `xmlrpc:"SubtitlesLink"`
 		} `xmlrpc:"data"`
@@ -66,10 +73,18 @@ func (s openSubtitlesSearcher) searchSubtitles(client *xmlrpc.Client, token, has
 
 	var subs []SubtitleRef
 	for _, sub := range response.Subtitles {
+		downloadsInt, err := strconv.Atoi(sub.Downloads)
+		if err != nil {
+			downloadsInt = -1
+		}
+
 		subs = append(subs, SubtitleRef{
-			FileName: sub.FileName,
-			URL:      sub.URL,
-			Source:   &openSubtitlesSource,
+			FileName:  sub.FileName,
+			Hash:      sub.Hash,
+			Format:    sub.Format,
+			Downloads: downloadsInt,
+			URL:       sub.URL,
+			Source:    &openSubtitlesSource,
 		})
 	}
 
@@ -93,6 +108,9 @@ func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef
 	}
 
 	subs, err := s.searchSubtitles(client, token, hash, language, size)
+	if err != nil {
+		return nil, err
+	}
 
 	err = client.Call("LogOut", token, nil)
 	if err != nil {
@@ -100,4 +118,33 @@ func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef
 	}
 
 	return subs, nil
+}
+
+func (s openSubtitlesSearcher) Download(subtitle SubtitleRef, filePath string) (string, error) {
+	resp, err := http.Get(subtitle.URL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	// Substrings the extension out, and adds in the new one
+	subtitlePath := filePath[:len(filePath)-len(path.Ext(filePath))] + "." + subtitle.Format
+	reader, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	// All these flags mean: open for write only, create it if it doesnt exists but if it does - empty it
+	file, err := os.OpenFile(subtitlePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	_, err = io.Copy(file, reader)
+	if err != nil {
+		return "", err
+	}
+
+	return subtitlePath, nil
 }

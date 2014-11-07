@@ -14,10 +14,16 @@ import (
 
 func init() {
 	db := GetSubtitleDB()
-	db.addSource(openSubtitlesProvider{})
+	db.addSource(openSubtitlesProvider{
+		UserAgent: "periscope",
+		Server:    "http://api.opensubtitles.org/xml-rpc",
+	})
 }
 
-type openSubtitlesProvider struct{}
+type openSubtitlesProvider struct {
+	UserAgent string
+	Server    string
+}
 
 func (s openSubtitlesProvider) login(client *xmlrpc.Client, username, password, language, useragent string) (string, error) {
 	request := []interface{}{username, password, language, useragent}
@@ -91,12 +97,12 @@ func (s openSubtitlesProvider) Name() string {
 }
 
 func (s openSubtitlesProvider) GetSubtitle(file, language string) ([]Subtitle, error) {
-	client, err := xmlrpc.NewClient("http://api.opensubtitles.org/xml-rpc", nil)
+	client, err := xmlrpc.NewClient(s.Server, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := s.login(client, "", "", language, userAgent)
+	token, err := s.login(client, "", "", language, s.UserAgent)
 	if err != nil {
 		return nil, err
 	}

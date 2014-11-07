@@ -2,11 +2,6 @@ package providers
 
 import "log"
 
-// Consts
-const (
-	userAgent = "OSTestUserAgent" // gosub v0.1
-)
-
 // SubtitleDB is the interface through which we search for subtitles
 type SubtitleDB interface {
 	addSource(SubtitleProvider)

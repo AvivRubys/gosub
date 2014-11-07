@@ -62,5 +62,5 @@ func main() {
 		log.Fatalf("Error in downloading the subtitle. \n%s\n", err)
 	}
 
-	log.Printf("Got %s from %s.\n", subPath, selectedSub.Source.Name)
+	log.Printf("Got %s from %s.\n", subPath, selectedSub.Source.Name())
 }

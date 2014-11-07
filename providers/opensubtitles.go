@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
 	"strconv"
 
 	"github.com/kolo/xmlrpc"
@@ -127,7 +126,7 @@ func (s openSubtitlesProvider) Download(subtitle Subtitle, filePath string) (str
 	}
 	defer resp.Body.Close()
 	// Substrings the extension out, and adds in the new one
-	subtitlePath := filePath[:len(filePath)-len(path.Ext(filePath))] + "." + subtitle.Format
+	subtitlePath := createSubtitlePath(filePath, subtitle.Format)
 	reader, err := gzip.NewReader(resp.Body)
 	if err != nil {
 		return "", err

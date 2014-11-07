@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 )
 
 const sixtyFourKiloBytes = 64 * 1024
@@ -73,4 +74,11 @@ func movieHashFile(filepath string) (string, int64, error) {
 	}
 
 	return fmt.Sprintf("%x", uint64(fileSize)+head+tail), fileSize, nil
+}
+
+func createSubtitlePath(filePath, format string) string {
+	pathLength := len(filePath)
+	fileExt := path.Ext(filePath)
+	subtitlePath := filePath[:pathLength-len(fileExt)] + "." + format
+	return subtitlePath
 }

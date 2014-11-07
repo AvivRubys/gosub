@@ -67,6 +67,7 @@ func (s theSubDbProvider) GetSubtitle(filePath, language string) ([]Subtitle, er
 		return subs, err
 	}
 
+	client := http.Client{}
 	params := url.Values{}
 	params.Set("action", "search")
 	params.Set("hash", hash)
@@ -77,7 +78,13 @@ func (s theSubDbProvider) GetSubtitle(filePath, language string) ([]Subtitle, er
 		RawQuery: params.Encode(),
 	}
 
-	resp, err := http.Get(url.String())
+	request, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return subs, nil
+	}
+
+	request.Header.Set("User-Agent", s.UserAgent)
+	resp, err := client.Do(request)
 	if err != nil {
 		return subs, err
 	}
@@ -106,7 +113,14 @@ func (s theSubDbProvider) GetSubtitle(filePath, language string) ([]Subtitle, er
 
 // Download returns the path of the downloaded subtitle
 func (s theSubDbProvider) Download(subtitle Subtitle, filePath string) (string, error) {
-	resp, err := http.Get(subtitle.URL)
+	client := http.Client{}
+	request, err := http.NewRequest("GET", subtitle.URL, nil)
+	if err != nil {
+		return "", nil
+	}
+
+	request.Header.Set("User-Agent", s.UserAgent)
+	resp, err := client.Do(request)
 	if err != nil {
 		return "", err
 	}

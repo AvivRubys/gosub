@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/kolo/xmlrpc"
 )
@@ -17,16 +16,32 @@ func init() {
 	db.addSource(openSubtitlesProvider{
 		UserAgent: "periscope",
 		Server:    "http://api.opensubtitles.org/xml-rpc",
+		LanguageMap: map[string]string{
+			"en": "eng", "fr": "fre", "hu": "hun", "cs": "cze",
+			"pl": "pol", "sk": "slo", "pt": "por", "pt-br": "pob",
+			"es": "spa", "el": "ell", "ar": "ara", "sq": "alb",
+			"hy": "arm", "ay": "ass", "bs": "bos", "bg": "bul",
+			"ca": "cat", "zh": "chi", "hr": "hrv", "da": "dan",
+			"nl": "dut", "eo": "epo", "et": "est", "fi": "fin",
+			"gl": "glg", "ka": "geo", "de": "ger", "he": "heb",
+			"hi": "hin", "is": "ice", "id": "ind", "it": "ita",
+			"ja": "jpn", "kk": "kaz", "ko": "kor", "lv": "lav",
+			"lt": "lit", "lb": "ltz", "mk": "mac", "ms": "may",
+			"no": "nor", "oc": "oci", "fa": "per", "ro": "rum",
+			"ru": "rus", "sr": "scc", "sl": "slv", "sv": "swe",
+			"th": "tha", "tr": "tur", "uk": "ukr", "vi": "vie",
+		},
 	})
 }
 
 type openSubtitlesProvider struct {
-	UserAgent string
-	Server    string
+	UserAgent   string
+	Server      string
+	LanguageMap map[string]string
 }
 
 func (s openSubtitlesProvider) login(client *xmlrpc.Client, username, password, language, useragent string) (string, error) {
-	request := []interface{}{username, password, language, useragent}
+	request := []interface{}{username, password, s.LanguageMap[language], useragent}
 	var response struct {
 		Token   string  `xmlrpc:"token"`
 		Status  string  `xmlrpc:"status"`
@@ -52,7 +67,7 @@ func (s openSubtitlesProvider) searchSubtitles(client *xmlrpc.Client, token, has
 			MovieByteSize string `xmlrpc:"moviebytesize"`
 			MovieHash     string `xmlrpc:"moviehash"`
 			Language      string `xmlrpc:"sublanguageid"`
-		}{{fmt.Sprintf("%d", size), hash, language}}}
+		}{{fmt.Sprintf("%d", size), hash, s.LanguageMap[language]}}}
 
 	var response struct {
 		Status    string `xmlrpc:"status"`
@@ -74,18 +89,18 @@ func (s openSubtitlesProvider) searchSubtitles(client *xmlrpc.Client, token, has
 
 	var subs []Subtitle
 	for _, sub := range response.Subtitles {
-		downloadsInt, err := strconv.Atoi(sub.Downloads)
+		/*downloadsInt, err := strconv.Atoi(sub.Downloads)
 		if err != nil {
 			downloadsInt = -1
-		}
+		}*/
 
 		subs = append(subs, Subtitle{
-			FileName:  sub.FileName,
-			Hash:      sub.Hash,
-			Format:    sub.Format,
-			Downloads: downloadsInt,
-			URL:       sub.URL,
-			Source:    s,
+			FileName: sub.FileName,
+			Hash:     sub.Hash,
+			Format:   sub.Format,
+			//Downloads: downloadsInt,
+			URL:    sub.URL,
+			Source: s,
 		})
 	}
 

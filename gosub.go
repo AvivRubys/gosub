@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	language   = flag.String("language", "eng", "")
+	language   = flag.String("language", "en", "")
 	autoDecide = flag.Bool("auto", true, "")
 	help       = flag.Bool("h", false, "Help")
 	file       string
@@ -48,11 +48,11 @@ func main() {
 
 	if *autoDecide || len(subs) == 1 {
 		selectedSub = &subs[0]
-		for _, sub := range subs {
+		/*for _, sub := range subs {
 			if sub.Downloads > selectedSub.Downloads {
 				selectedSub = &sub
 			}
-		}
+		}*/
 	} else {
 		// Let the user select
 	}

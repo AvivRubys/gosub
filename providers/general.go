@@ -4,12 +4,11 @@ package providers
 
 // Subtitle is a reference to a subtitle, i.e. it wasn't downloaded yet, just found.
 type Subtitle struct {
-	FileName  string
-	Hash      string
-	Format    string
-	Downloads int
-	URL       string
-	Source    SubtitleProvider
+	FileName string
+	Hash     string
+	Format   string
+	URL      string
+	Source   SubtitleProvider
 }
 
 // SubtitleProvider is the interface a provider needs to implement

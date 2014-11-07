@@ -60,7 +60,7 @@ func (s theSubDbProvider) Name() string {
 }
 
 // GetSubtitle accepts a filepath and a language, and searches for subtitles
-func (s theSubDbProvider) GetSubtitle(filePath, language string) ([]Subtitle, error) {
+func (s theSubDbProvider) GetSubtitles(filePath, language string) ([]Subtitle, error) {
 	var subs []Subtitle
 	hash, err := s.hashFile(filePath)
 	if err != nil {

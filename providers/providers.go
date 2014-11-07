@@ -19,7 +19,7 @@ func (db *providerDB) addSource(s SubtitleProvider) {
 func (db *providerDB) SearchAll(fileName, language string) ([]Subtitle, error) {
 	var subs []Subtitle
 	for _, src := range db.providers {
-		srcSubs, err := src.GetSubtitle(fileName, language)
+		srcSubs, err := src.GetSubtitles(fileName, language)
 		if err != nil {
 			log.Printf("ERR When getting subtitles from %s: %s", src.Name(), err)
 		} else {

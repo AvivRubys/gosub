@@ -111,7 +111,7 @@ func (s openSubtitlesProvider) Name() string {
 	return "OpenSubtitles.org"
 }
 
-func (s openSubtitlesProvider) GetSubtitle(file, language string) ([]Subtitle, error) {
+func (s openSubtitlesProvider) GetSubtitles(file, language string) ([]Subtitle, error) {
 	client, err := xmlrpc.NewClient(s.Server, nil)
 	if err != nil {
 		return nil, err

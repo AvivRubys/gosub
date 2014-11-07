@@ -17,7 +17,7 @@ type SubtitleProvider interface {
 	Name() string
 
 	// GetSubtitle accepts a filepath and a language, and searches for subtitles
-	GetSubtitle(filePath, language string) ([]Subtitle, error)
+	GetSubtitles(filePath, language string) ([]Subtitle, error)
 
 	// Download returns the path of the downloaded subtitle
 	Download(subtitle Subtitle, filePath string) (string, error)

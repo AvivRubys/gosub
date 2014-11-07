@@ -1,4 +1,4 @@
-package plugins
+package providers
 
 import (
 	"compress/gzip"
@@ -13,18 +13,14 @@ import (
 	"github.com/kolo/xmlrpc"
 )
 
-var (
-	openSubtitlesSource = SubtitleSource{Name: "OpenSubtitles.org", Impl: openSubtitlesSearcher{}}
-)
-
 func init() {
 	db := GetSubtitleDB()
-	db.addSource(openSubtitlesSource)
+	db.addSource(openSubtitlesProvider{})
 }
 
-type openSubtitlesSearcher struct{}
+type openSubtitlesProvider struct{}
 
-func (s openSubtitlesSearcher) login(client *xmlrpc.Client, username, password, language, useragent string) (string, error) {
+func (s openSubtitlesProvider) login(client *xmlrpc.Client, username, password, language, useragent string) (string, error) {
 	request := []interface{}{username, password, language, useragent}
 	var response struct {
 		Token   string  `xmlrpc:"token"`
@@ -44,7 +40,7 @@ func (s openSubtitlesSearcher) login(client *xmlrpc.Client, username, password, 
 	return response.Token, nil
 }
 
-func (s openSubtitlesSearcher) searchSubtitles(client *xmlrpc.Client, token, hash, language string, size int64) ([]SubtitleRef, error) {
+func (s openSubtitlesProvider) searchSubtitles(client *xmlrpc.Client, token, hash, language string, size int64) ([]Subtitle, error) {
 	request := []interface{}{
 		token,
 		[]struct {
@@ -71,27 +67,31 @@ func (s openSubtitlesSearcher) searchSubtitles(client *xmlrpc.Client, token, has
 		return nil, err
 	}
 
-	var subs []SubtitleRef
+	var subs []Subtitle
 	for _, sub := range response.Subtitles {
 		downloadsInt, err := strconv.Atoi(sub.Downloads)
 		if err != nil {
 			downloadsInt = -1
 		}
 
-		subs = append(subs, SubtitleRef{
+		subs = append(subs, Subtitle{
 			FileName:  sub.FileName,
 			Hash:      sub.Hash,
 			Format:    sub.Format,
 			Downloads: downloadsInt,
 			URL:       sub.URL,
-			Source:    &openSubtitlesSource,
+			Source:    s,
 		})
 	}
 
 	return subs, nil
 }
 
-func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef, error) {
+func (s openSubtitlesProvider) Name() string {
+	return "OpenSubtitles.org"
+}
+
+func (s openSubtitlesProvider) GetSubtitle(file, language string) ([]Subtitle, error) {
 	client, err := xmlrpc.NewClient("http://api.opensubtitles.org/xml-rpc", nil)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (s openSubtitlesSearcher) GetSubtitle(file, language string) ([]SubtitleRef
 	return subs, nil
 }
 
-func (s openSubtitlesSearcher) Download(subtitle SubtitleRef, filePath string) (string, error) {
+func (s openSubtitlesProvider) Download(subtitle Subtitle, filePath string) (string, error) {
 	resp, err := http.Get(subtitle.URL)
 	if err != nil {
 		return "", err

@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Rubyss/gosub/plugins"
+	"github.com/Rubyss/gosub/providers"
 )
 
 var (
@@ -17,7 +17,7 @@ var (
 )
 
 func main() {
-	// Go over all plugins, search, if there's more than one result - ask the user
+	// Go over all providers, search, if there's more than one result - ask the user
 	//  what he wants unless there's a STFU flag, and then select automatically.
 
 	flag.Parse()
@@ -34,7 +34,7 @@ func main() {
 		file = args[0]
 	}
 
-	db := plugins.GetSubtitleDB()
+	db := providers.GetSubtitleDB()
 	subs, err := db.SearchAll(file, *language)
 	if err != nil {
 		log.Fatalf("Error while searching!\n%s\n", err)
@@ -44,7 +44,7 @@ func main() {
 		log.Fatalf("No subtitles found.\n")
 	}
 
-	var selectedSub *plugins.SubtitleRef
+	var selectedSub *providers.Subtitle
 
 	if *autoDecide || len(subs) == 1 {
 		selectedSub = &subs[0]
@@ -57,7 +57,7 @@ func main() {
 		// Let the user select
 	}
 
-	subPath, err := selectedSub.Source.Impl.Download(*selectedSub, file)
+	subPath, err := selectedSub.Source.Download(*selectedSub, file)
 	if err != nil {
 		log.Fatalf("Error in downloading the subtitle. \n%s\n", err)
 	}

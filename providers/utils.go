@@ -1,4 +1,4 @@
-package plugins
+package providers
 
 import (
 	"encoding/binary"

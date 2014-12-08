@@ -1,14 +1,16 @@
 package providers
 
 import (
-	"log"
+	"fmt"
+	"path/filepath"
 	"sync"
 )
 
 // SubtitleDB is the interface through which we search for subtitles
 type SubtitleDB interface {
 	addSource(SubtitleProvider)
-	SearchAll(filePath, language string) ([]Subtitle, error)
+	Get(path, language string) error
+	GetAll(paths []string, language string)
 }
 
 type providerDB struct {
@@ -19,7 +21,7 @@ func (db *providerDB) addSource(s SubtitleProvider) {
 	db.providers = append(db.providers, s)
 }
 
-func (db *providerDB) SearchAll(fileName, language string) ([]Subtitle, error) {
+func (db *providerDB) Get(path, language string) error {
 	var result []Subtitle
 	var wg sync.WaitGroup
 	subReceiver := make(chan []Subtitle)
@@ -29,9 +31,9 @@ func (db *providerDB) SearchAll(fileName, language string) ([]Subtitle, error) {
 		wg.Add(1)
 		go func(p SubtitleProvider) {
 			defer wg.Done()
-			subs, err := p.GetSubtitles(fileName, language)
+			subs, err := p.GetSubtitles(path, language)
 			if err != nil {
-				log.Printf("ERR When getting subtitles from %s: %s", p.Name(), err)
+				fmt.Printf("ERR When getting subtitles from %s: %s", p.Name(), err)
 			} else {
 				subReceiver <- subs
 			}
@@ -48,7 +50,32 @@ func (db *providerDB) SearchAll(fileName, language string) ([]Subtitle, error) {
 		result = append(result, subs...)
 	}
 
-	return result, nil
+	// Take the first sub, since we currently can't select intelligently
+	selectedSub := result[0]
+	subPath, err := selectedSub.Source.Download(selectedSub, path)
+	if err != nil {
+		fmt.Printf("Error in downloading subtitle. \n%s\n", err)
+	}
+
+	fmt.Printf("Got \"%s\" from %s.\n", filepath.Base(subPath), selectedSub.Source.Name())
+
+	return nil
+}
+
+func (db *providerDB) GetAll(paths []string, language string) {
+	var wg sync.WaitGroup
+	for _, path := range paths {
+		wg.Add(1)
+		go func(path string) {
+			defer wg.Done()
+			err := db.Get(path, language)
+			if err != nil {
+				fmt.Printf("Error on file: \"%s\"\n", filepath.Base(path))
+			}
+		}(path)
+	}
+
+	wg.Wait()
 }
 
 var searchers = providerDB{make([]SubtitleProvider, 0)}

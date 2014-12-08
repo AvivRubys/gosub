@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
@@ -134,7 +133,7 @@ func (s openSubtitlesProvider) GetSubtitles(file, language string) ([]Subtitle, 
 
 	err = client.Call("LogOut", token, nil)
 	if err != nil {
-		log.Printf("LogOut from opensubtitles failed. Reason: %s\n", err)
+		fmt.Printf("ERR LogOut from opensubtitles failed. Reason: %s\n", err)
 	}
 
 	return subs, nil

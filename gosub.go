@@ -10,25 +10,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"bitbucket.org/kardianos/osext"
 	"github.com/Rubyss/gosub/providers"
 )
 
-const LogFilePath = "gosub.log"
+const logFileName = "gosub.log"
 
 var (
 	language = flag.String("language", "en", "")
 	help     = flag.Bool("h", false, "Help")
 )
-
-func setupLogging() {
-	logfile, err := os.OpenFile(LogFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Printf("Error opening logfile %s (%v)", LogFilePath, err)
-	}
-	defer logfile.Close()
-
-	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
-}
 
 func main() {
 	flag.Parse()
@@ -40,7 +31,15 @@ func main() {
 		os.Exit(0)
 	}
 
-	setupLogging()
+	// Set up proper logging
+	dir, _ := osext.ExecutableFolder()
+	logfile, err := os.OpenFile(dir+logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("Error opening logfile %s (%v)", dir+logFileName, err)
+	}
+	defer logfile.Close()
+
+	log.SetOutput(io.MultiWriter(logfile, os.Stderr))
 
 	// mkv isn't listed in windows mime types, for some reason.
 	mime.AddExtensionType(".mkv", "video/x-matroska")

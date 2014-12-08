@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"log"
 	"mime"
 	"os"
 	"path/filepath"
@@ -11,14 +13,24 @@ import (
 	"github.com/Rubyss/gosub/providers"
 )
 
+const LogFilePath = "gosub.log"
+
 var (
 	language = flag.String("language", "en", "")
 	help     = flag.Bool("h", false, "Help")
 )
 
+func setupLogging() {
+	logfile, err := os.OpenFile(LogFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("Error opening logfile %s (%v)", LogFilePath, err)
+	}
+	defer logfile.Close()
+
+	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
+}
+
 func main() {
-	// Go over all providers, search, if there's more than one result - ask the user
-	//  what he wants unless there's a STFU flag, and then select automatically.
 	flag.Parse()
 	if *help {
 		usage := `Usage: gosub (flags) [FILES/DIRECTORIES]
@@ -27,6 +39,8 @@ func main() {
 		fmt.Println(usage)
 		os.Exit(0)
 	}
+
+	setupLogging()
 
 	// mkv isn't listed in windows mime types, for some reason.
 	mime.AddExtensionType(".mkv", "video/x-matroska")
@@ -38,13 +52,13 @@ func main() {
 		for _, arg := range args {
 			filepath.Walk(arg, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
-					fmt.Printf("Error in walking directory %s\n", err)
+					log.Printf("Error in walking directory %s\n", err)
 					return nil
 				}
 
 				fileInfo, err := os.Stat(path)
 				if err != nil {
-					fmt.Printf("Error in opening path %s\n", path)
+					log.Printf("Error in opening path %s\n", path)
 					return nil
 				}
 
@@ -56,7 +70,7 @@ func main() {
 				if strings.Contains(mimeType, "video") {
 					files = append(files, path)
 				} else {
-					fmt.Printf("Ignoring %s (not a video file)\n", filepath.Base(path))
+					log.Printf("Ignoring %s (not a video file)\n", filepath.Base(path))
 				}
 
 				return nil

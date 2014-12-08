@@ -3,9 +3,9 @@ package providers
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -92,7 +92,7 @@ func (s theSubDbProvider) GetSubtitles(filePath, language string) ([]Subtitle, e
 
 	switch resp.StatusCode {
 	case http.StatusBadRequest:
-		fmt.Printf("Error while searching %s: 400 Bad Request\n", s.Name())
+		log.Printf("Error while searching %s: 400 Bad Request\n", s.Name())
 	case http.StatusOK:
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {

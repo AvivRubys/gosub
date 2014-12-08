@@ -1,7 +1,7 @@
 package providers
 
 import (
-	"fmt"
+	"log"
 	"path/filepath"
 	"sync"
 )
@@ -33,7 +33,7 @@ func (db *providerDB) Get(path, language string) error {
 			defer wg.Done()
 			subs, err := p.GetSubtitles(path, language)
 			if err != nil {
-				fmt.Printf("ERR When getting subtitles from %s: %s", p.Name(), err)
+				log.Printf("ERR When getting subtitles from %s: %s", p.Name(), err)
 			} else {
 				subReceiver <- subs
 			}
@@ -54,10 +54,10 @@ func (db *providerDB) Get(path, language string) error {
 	selectedSub := result[0]
 	subPath, err := selectedSub.Source.Download(selectedSub, path)
 	if err != nil {
-		fmt.Printf("Error in downloading subtitle. \n%s\n", err)
+		log.Printf("Error in downloading subtitle. \n%s\n", err)
 	}
 
-	fmt.Printf("Got \"%s\" from %s.\n", filepath.Base(subPath), selectedSub.Source.Name())
+	log.Printf("Got \"%s\" from %s.\n", filepath.Base(subPath), selectedSub.Source.Name())
 
 	return nil
 }
@@ -70,7 +70,7 @@ func (db *providerDB) GetAll(paths []string, language string) {
 			defer wg.Done()
 			err := db.Get(path, language)
 			if err != nil {
-				fmt.Printf("Error on file: \"%s\"\n", filepath.Base(path))
+				log.Printf("Error getting subtitles for: \"%s\"\n", filepath.Base(path))
 			}
 		}(path)
 	}

@@ -134,7 +134,7 @@ func (s openSubtitlesProvider) GetSubtitles(file, language string) ([]Subtitle, 
 
 	err = client.Call("LogOut", token, nil)
 	if err != nil {
-		log.Printf("ERR LogOut from opensubtitles failed. Reason: %s\n", err)
+		log.Printf("Error in LogOut from opensubtitles. Reason: %s\n", err)
 	}
 
 	return subs, nil

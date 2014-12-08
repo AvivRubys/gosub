@@ -33,7 +33,7 @@ func (db *providerDB) Get(path, language string) error {
 			defer wg.Done()
 			subs, err := p.GetSubtitles(path, language)
 			if err != nil {
-				log.Printf("ERR When getting subtitles from %s: %s", p.Name(), err)
+				log.Printf("Error when getting subtitles from %s: %s", p.Name(), err)
 			} else {
 				subReceiver <- subs
 			}

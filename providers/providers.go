@@ -25,6 +25,7 @@ func (db *providerDB) Get(path, language string) error {
 	var result []Subtitle
 	var wg sync.WaitGroup
 	subReceiver := make(chan []Subtitle)
+	defer recoverFromSearchError(path)
 
 	// Launch a goroutine for each provider, send results into subReceiver channel
 	for _, provider := range db.providers {
@@ -76,6 +77,12 @@ func (db *providerDB) GetAll(paths []string, language string) {
 	}
 
 	wg.Wait()
+}
+
+func recoverFromSearchError(file string) {
+	if e := recover(); e != nil {
+		log.Printf("Error in search for subtitle %s\n. %s\n", file, e)
+	}
 }
 
 var searchers = providerDB{make([]SubtitleProvider, 0)}

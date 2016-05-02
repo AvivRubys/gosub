@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"bitbucket.org/kardianos/osext"
-	"github.com/Rubyss/gosub/providers"
+	"github.com/kardianos/osext"
+	"github.com/AvivRubys/gosub/providers"
 )
 
 const logFileName = "gosub.log"

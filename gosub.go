@@ -41,8 +41,10 @@ func main() {
 
 	log.SetOutput(io.MultiWriter(logfile, os.Stderr))
 
-	// mkv isn't listed in windows mime types, for some reason.
+	// Make sure we have all needed mime types
 	mime.AddExtensionType(".mkv", "video/x-matroska")
+	mime.AddExtensionType(".mp4", "video/mp4")
+	mime.AddExtensionType(".avi", "video/avi")
 
 	// Arguments we have been given may be files or directories,
 	// filter them for video files
